@@ -5,11 +5,13 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 )
 
-var templates = template.Must(template.ParseFiles("edit.html", "view.html"))
+var templates = template.Must(template.ParseGlob("templates/*"))
 var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
+var store = "data/"
 
 type Page struct {
 	Title string
@@ -27,11 +29,11 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 	}
 }
 func (p *Page) save() error {
-	filename := p.Title + ".txt"
+	filename := store + p.Title + ".txt"
 	return ioutil.WriteFile(filename, p.Body, 0600)
 }
 func loadPage(title string) (*Page, error) {
-	filename := title + ".txt"
+	filename := store + title + ".txt"
 	body, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -71,6 +73,9 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 }
 
 func main() {
+	if _, err := os.Stat(store); os.IsNotExist(err) {
+		err = os.Mkdir(store, os.ModePerm)
+	}
 	http.HandleFunc("/view/", makeHandler(viewHandler))
 	http.HandleFunc("/edit/", makeHandler(editHandler))
 	http.HandleFunc("/save/", makeHandler(saveHandler))
